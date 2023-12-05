@@ -5,6 +5,7 @@ library;
 
 export 'src/streams_transforming_byte_stream_to_string_base.dart';
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -17,21 +18,32 @@ Transform the stream of bytes from an HTTP response into strings and print the l
 Implement error handling and ensure to close the client when the stream is finished.
  */
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 Future<List<int>> transformByteStream() async {
-  final url = 'https://jsonplaceholder.typicode.com/todos/1';
-  final urlAsURL = Uri.parse(url);
+  Uri url = Uri.parse('https://jsonplaceholder.typicode.com/todos/1');
+  final client = http.Client();
+  List<int> chunkSizes = [];
 
-  final response = Future(() => http.get(urlAsURL));
-  final responseAsStream = Stream.fromFuture(response);
+  try {
+    final request = http.Request('GET', url);
+    final response = await client.send(request);
 
-  List<int> ans = [];
-  responseAsStream.listen((event) { 
-    print(event.contentLength);
-    ans.add(event.contentLength!);
-  });
+    await for (var chunk in response.stream.transform(utf8.decoder)) {
+      print('Chunk size: ${chunk.length}');
+      chunkSizes.add(chunk.length);
+    }
+  } catch (e) {
+    print('An error occurred: $e');
+  } finally {
+    client.close();
+    print('Client closed');
+  }
 
-  return ans;
+  return chunkSizes;
 }
+
 
 Future<void> main() async {
   transformByteStream();
